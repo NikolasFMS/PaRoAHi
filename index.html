@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6edcf">
+  <meta name="description" content="Мобильный помощник для настольной игры Parks: Roll & Hike">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ParksHike">
+  <title>Parks: Roll & Hike — помощник</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="js/data.js"></script>
+  <script defer src="js/game.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar" hidden>
+      <div class="topbar-left">
+        <button class="icon-button" id="homeButton" aria-label="На главную">⌂</button>
+        <div class="cache-status-badge" id="cacheStatusBadge" title="Все файлы кешированы на устройстве, состояние партии сохранено">
+          <span class="status-dot"></span>
+          <span id="cacheStatusText">Офлайн-кеш</span>
+        </div>
+        <button class="wake-lock-chip" id="wakeLockBtn" title="Режим «Экран не гаснет»">
+          <span class="wake-icon">☀️</span>
+          <span class="wake-text" id="wakeLockText">Бодрствует</span>
+        </button>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="themeToggleBtn" aria-label="Переключить тему" title="Тема «Ночной лагерь»">🔥</button>
+        <button class="btn btn-small btn-outline pwa-install-btn" id="pwaInstallBtn" hidden title="Установить приложение на устройство">📲 Установить</button>
+        <button class="icon-button" id="settingsButton" aria-label="Настройки">⚙</button>
+        <button class="icon-button" id="helpButton" aria-label="Правила">?</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="screen splash active" id="screen-splash" aria-label="Главная">
+        <div class="splash-art" aria-hidden="true"></div>
+        <div class="splash-content">
+          <img class="hero-logo" src="assets/logo.svg" alt="Parks Roll & Hike">
+          <p class="eyebrow">Мобильный помощник</p>
+          <h1>Соберите компанию.<br>Откройте тропу.</h1>
+          <p class="splash-copy">Маршрут, кубики, жетоны и парк — под рукой. Блокноты игроков остаются на столе.</p>
+          <button class="btn btn-primary btn-wide" id="startButton">Начать поход <span>→</span></button>
+          <button class="text-button splash-new" id="newSetupButton" hidden>Начать новую игру</button>
+          <div class="splash-pills"><span>3 дня</span><span>6 парков</span><span>1–4 игрока</span></div>
+        </div>
+        <div class="copyright-note">ПРИРОДА ЗОВЁТ · БРОСАЙ И ИДИ</div>
+      </section>
+
+      <section class="screen setup-screen" id="screen-setup" aria-label="Настройка игры">
+        <div class="page-heading"><span class="step-badge">01 / СТАРТ</span>
+          <h1>Собираем<br>поход</h1>
+          <p>Выберите размер компании и национальный парк.</p>
+        </div>
+        <div class="setup-grid">
+          <div class="setup-card">
+            <div class="card-title-row">
+              <div><span class="eyebrow">Компания</span>
+                <h2>Сколько игроков?</h2>
+              </div><span class="decor-mark">✳</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Число игроков">
+              <button class="segment active" data-range="small">1–2 игрока</button>
+              <button class="segment" data-range="large">3–4 игрока</button>
+            </div>
+            <div class="count-pick" id="countPick"></div>
+            <div class="player-fields" id="playerFields"></div>
+            <div class="first-player-row">
+              <label class="field-label" for="firstPlayerSelect">Первый игрок</label>
+              <button class="btn btn-secondary btn-small" id="chwaziButton" type="button">🖐 Выбрать касанием</button>
+            </div>
+            <select id="firstPlayerSelect" class="select-control"></select>
+            <div id="soloNote" class="solo-note" hidden></div>
+          </div>
+          <div class="setup-card park-chooser">
+            <div class="card-title-row">
+              <div><span class="eyebrow">Место похода</span>
+                <h2>Выберите парк</h2>
+              </div><span class="decor-mark">⌖</span>
+            </div>
+            <div class="park-choice-actions"><button class="btn btn-secondary" id="randomParkButton">✦ Случайный
+                парк</button><span id="parkModeLabel">Случайный выбор</span></div>
+            <div class="park-grid" id="parkGrid"></div>
+            <div class="selected-park-note" id="selectedParkNote"></div>
+          </div>
+        </div>
+        <div class="setup-footer"><button class="btn btn-ghost" id="setupBack">← Назад</button><button
+            class="btn btn-primary" id="beginGame">В путь <span>→</span></button></div>
+      </section>
+
+      <section class="screen board-screen" id="screen-board" aria-label="Игровое поле">
+        <div class="game-heading">
+          <div><span class="eyebrow" id="gameModeLabel"></span>
+            <h1><span id="roundTitle">День 1</span><span class="phase-chip" id="phaseChip">ДНЕВНОЙ ПОХОД</span></h1>
+          </div>
+          <button class="park-mini" id="parkFlipButton" aria-label="Перевернуть карту парка"><img id="parkMiniImage"
+              src="" alt="Карта парка"><span id="parkMiniLabel"></span><b>↻</b></button>
+        </div>
+        <div class="game-layout">
+          <section class="play-column">
+            <div class="status-strip">
+              <div class="active-player" id="activePlayerBox"></div>
+            </div>
+            <div class="route-card">
+              <div class="route-title">
+                <div><span class="eyebrow">Тропа</span>
+                  <h2 id="routeTitle">До конца маршрута</h2>
+                </div><span class="route-count" id="routeCount">0 / 4</span>
+              </div>
+              <div class="map-wrap" id="mapWrap">
+                <img class="trail-map" src="assets/trail-map.png" alt="Иллюстрированная карта маршрута">
+                <div class="trail-marker start-marker" id="startMarker"><span>СТАРТ</span></div>
+                <div class="trail-markers" id="trailMarkers"></div>
+                <img class="group-token" id="groupToken" src="assets/group-token.svg" alt="Жетон группы">
+              </div>
+              <div class="route-status" id="routeStatus"></div>
+            </div>
+            <div class="dice-card">
+              <div class="dice-heading">
+                <div><span class="eyebrow">Пул кубиков</span>
+                  <h2>Выбери один кубик</h2>
+                </div>
+                <div class="dice-actions"><button class="btn btn-small btn-ghost" id="undoDieButton" hidden>⬅ Отменить
+                    ход</button><button class="btn btn-small btn-outline" id="rerollButton">↻ Перебросить</button></div>
+              </div>
+              <p class="dice-instruction" id="diceInstruction">Нажмите на кубик, чтобы применить его символы. Отмечайте
+                результат в бумажном блокноте.</p>
+              <div class="dice-pool" id="dicePool"></div>
+              <div class="last-action" id="lastAction"></div>
+            </div>
+          </section>
+          <aside class="side-column">
+            <div class="park-detail-card">
+              <div class="side-card-heading">
+                <div><span class="eyebrow">Парк этого похода</span>
+                  <h2 id="parkTitle"></h2>
+                </div><button class="flip-text" id="parkFlipText">Оборот ↻</button>
+              </div><img id="parkDetailImage" class="park-detail-image" src="" alt="Карта парка">
+              <div class="park-rule-summary" id="parkRuleSummary"></div>
+            </div>
+        </div>
+        <div class="action-history-drawer" id="actionHistoryDrawer">
+          <button class="history-toggle-btn" id="historyToggleBtn" type="button" aria-expanded="false">
+            <span class="history-label">📜 Журнал ходов дня (<span id="historyCount">0</span>)</span>
+            <span class="history-arrow" id="historyArrow">▲</span>
+          </button>
+          <div class="history-content" id="historyContent" hidden>
+            <div class="history-list" id="historyList">
+              <div class="history-empty">Ходов в этом дне пока нет. Бросьте кубики!</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen night-screen" id="screen-night" aria-label="Ночная фаза">
+        <div class="night-hero">
+          <div><span class="eyebrow">День завершён</span>
+            <h1>Ночь <span id="nightRound"></span></h1>
+            <p>Передохните, примените бонусы и запишите очки за флягу.</p>
+          </div>
+          <div class="night-moon">☾</div>
+        </div>
+        <div class="night-grid">
+          <div class="night-card"><span class="eyebrow">Порядок ночи</span>
+            <h2>Проверьте блокноты</h2>
+            <ol class="night-steps">
+              <li>Активируйте бонусы заполненных кругов в блокноте.</li>
+              <li>При желании примените бонус выбранного парка.</li>
+              <li>Запишите очки фляги за этот раунд.</li>
+            </ol>
+            <p class="small-note">Солнца, бонусы и флягу отмечайте в бумажных блокнотах.</p>
+            <div id="nightUndoControl"></div>
+            <button class="btn btn-primary btn-wide" id="finishNightButton">Завершить ночь и начать следующий день →</button>
+          </div>
+          <div class="night-card park-night-card">
+            <div class="side-card-heading">
+              <div><span class="eyebrow">Особенность парка</span>
+                <h2 id="nightParkTitle"></h2>
+              </div>
+            </div><img id="nightParkImage" class="night-park-image" src="" alt="Карта парка">
+            <div class="park-rule-summary" id="nightParkSummary"></div><button class="btn btn-secondary btn-wide"
+              id="activateParkBonus">Применить бонус парка</button>
+            <p class="small-note">При включённом учёте солнца списываются автоматически; иначе отметьте расход в
+              блокноте. Эффект бонуса тоже отметьте там.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen summary-screen" id="screen-summary" aria-label="Итог игры">
+        <div class="summary-hero"><span class="eyebrow">ПОХОД ЗАВЕРШЁН</span>
+          <h1>Кто увидел<br>больше?</h1>
+          <p>Введите итоговые очки из блокнотов, чтобы определить победителя.</p>
+        </div>
+        <div class="scoreboard" id="scoreboard"></div>
+        <div class="solo-rank-card" id="soloRankCard" hidden></div>
+        <div class="winner-banner" id="winnerBanner"></div>
+        <div class="summary-actions"><button class="btn btn-ghost" id="backToFinalNight">← К ночи</button><button
+            class="btn btn-primary" id="newGameButton">Новый поход</button></div>
+      </section>
+    </main>
+    <footer class="app-footer" id="appFooter" hidden><span>ПОМНИ: КАЖДЫЙ КУБИК — НОВАЯ ТРОПА</span><span>ПО ПРАВИЛАМ PDF
+        v1.2 · СОХРАНЕНИЕ НА УСТРОЙСТВЕ</span></footer>
+  </div>
+
+  <div class="finger-chooser-overlay" id="fingerChooserOverlay" hidden>
+    <div class="finger-chooser-card">
+      <div class="chooser-top">
+        <h3>Выбор первого игрока</h3>
+        <button class="icon-button close-chooser-btn" id="closeChooserBtn" type="button">×</button>
+      </div>
+      <p class="chooser-instruction" id="chooserInstruction">Каждый игрок держит палец на экране (до 4 игроков)...</p>
+      <div class="finger-touch-area" id="fingerTouchArea">
+        <div class="touch-prompt">Поместите 2–4 пальца в эту зону</div>
+      </div>
+      <div class="chooser-footer">
+        <button class="btn btn-secondary btn-wide" id="randomWheelBtn" type="button">🎲 Случайный выбор из списка</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="modal-close"
+        id="modalClose" aria-label="Закрыть">×</button>
+      <div id="modalBody"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+
+</html>

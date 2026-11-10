@@ -1,0 +1,32 @@
+{
+  "id": "./",
+  "name": "Parks: Roll & Hike — помощник",
+  "short_name": "ParksHike",
+  "description": "Автономный мобильный помощник для настольной игры Parks: Roll & Hike с полным кешированием на устройстве",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f6edcf",
+  "theme_color": "#f6edcf",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
