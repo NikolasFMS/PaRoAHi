@@ -49,16 +49,17 @@ window.PRH_GAME = (() => {
   };
 
   const routePoints = [
-    {x:41.0,y:33.0},{x:82.0,y:54.8},{x:15.2,y:54.5},{x:28.5,y:83.0},{x:66.3,y:88.0},{x:66.3,y:88.0}
+    { x: 41.0, y: 33.0 }, { x: 82.0, y: 54.8 }, { x: 15.2, y: 54.5 }, { x: 28.5, y: 83.0 }, { x: 66.3, y: 88.0 }, { x: 66.3, y: 88.0 }
   ];
-  const startPoint = {x:15.5,y:21.8};
-  const shuffle = list => { const a=[...list]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
-  const randomPark = () => D.parks[Math.floor(Math.random()*D.parks.length)];
-  const rollPool = () => D.dice.map(d=>({id:d.id,face:Math.floor(Math.random()*d.faces.length)}));
-  const newTokens = count => shuffle(D.tokens.filter(t=>count>2 || t.id!=='binoculars'));
-  const makeGame = ({count, names, parkId, settings={}}) => {
-    const park=D.parks.find(p=>p.id===parkId)||D.parks[0];
-    const game={count,parkId:park.id,players,round:1,phase:'day',routeIndex:0,routeLength:count<=2?4:5,routeTokens:newTokens(count),dicePool:[],rolledPool:[],takenFaces:{},rollPending:true,active:0,dayStarter:0,settings:{trackScores:true,trackParkUse:true,...settings},parkSide:'front',parkUsed:{},lastMessage:'Начинается первый день похода.',turnNumber:0,lastSavedAt:Date.now(),actionHistory:[]};
+  const startPoint = { x: 15.5, y: 21.8 };
+  const shuffle = list => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const randomPark = () => D.parks[Math.floor(Math.random() * D.parks.length)];
+  const rollPool = () => D.dice.map(d => ({ id: d.id, face: Math.floor(Math.random() * d.faces.length) }));
+  const newTokens = count => shuffle(D.tokens.filter(t => count > 2 || t.id !== 'binoculars'));
+  const makeGame = ({ count, names, parkId, settings = {} }) => {
+    const park = D.parks.find(p => p.id === parkId) || D.parks[0];
+    const players = Array.from({ length: count }, (_, i) => ({ name: names?.[i]?.trim() || `Игрок ${i + 1}` }));
+    const game = { count, parkId: park.id, players, round: 1, phase: 'day', routeIndex: 0, routeLength: count <= 2 ? 4 : 5, routeTokens: newTokens(count), dicePool: [], rolledPool: [], takenFaces: {}, rollPending: true, active: 0, dayStarter: 0, settings: { trackScores: true, trackParkUse: true, ...settings }, parkSide: 'front', parkUsed: {}, lastMessage: 'Начинается первый день похода.', turnNumber: 0, lastSavedAt: Date.now(), actionHistory: [] };
     saveSafe(game); return game;
   };
 
@@ -70,7 +71,7 @@ window.PRH_GAME = (() => {
       localStorage.setItem(STORE_PRIMARY, serialized);
       localStorage.setItem(STORE_BACKUP, serialized);
       saveToIDB(game);
-    } catch(e) {
+    } catch (e) {
       console.warn('Local save unavailable', e);
     }
   };
@@ -87,7 +88,7 @@ window.PRH_GAME = (() => {
         saveSafe(parsed); // migrate to scoped
         return parsed;
       }
-    } catch(e) {
+    } catch (e) {
       console.warn('Error reading local state', e);
     }
     return null;
@@ -104,41 +105,41 @@ window.PRH_GAME = (() => {
         try {
           const tx = db.transaction(IDB_STORE, 'readwrite');
           tx.objectStore(IDB_STORE).delete('current_game');
-        } catch {}
+        } catch { }
       });
-    } catch(e) {
+    } catch (e) {
       console.warn('Local save unavailable', e);
     }
   };
 
-  const saveSafe = game => { try{save(game);}catch(e){console.warn('Could not save the game',e);} };
+  const saveSafe = game => { try { save(game); } catch (e) { console.warn('Could not save the game', e); } };
   const currentPlayer = g => g.players[g.active];
-  const remainingHiking = g => g.dicePool.filter(d=>d.id!==5).length;
-  const faceOf = die => D.dice.find(d=>d.id===die.id).faces[die.face];
-  const nextPlayer = g => (g.active+1)%g.count;
-  const rollNew = g => { g.dicePool=[]; g.rolledPool=[]; g.takenFaces={}; g.rollPending=true; };
-  const applyIcons = (g,icons,isHiking=true) => {
-    const water=icons.filter(i=>i==='water'||i==='canteen').length;
-    return {water: isHiking&&g.parkId==='death-valley'?0:water};
+  const remainingHiking = g => g.dicePool.filter(d => d.id !== 5).length;
+  const faceOf = die => D.dice.find(d => d.id === die.id).faces[die.face];
+  const nextPlayer = g => (g.active + 1) % g.count;
+  const rollNew = g => { g.dicePool = []; g.rolledPool = []; g.takenFaces = {}; g.rollPending = true; };
+  const applyIcons = (g, icons, isHiking = true) => {
+    const water = icons.filter(i => i === 'water' || i === 'canteen').length;
+    return { water: isHiking && g.parkId === 'death-valley' ? 0 : water };
   };
-  const takeDie = (g,id,chosenIcon=null) => {
-    if(g.phase!=='day') return {error:'Сейчас ночная фаза.'};
-    if(g.rollPending) return {error:'Сначала бросьте кубики.'};
-    const found=g.dicePool.find(d=>d.id===id);
-    if(!found) return {error:'Этот кубик уже взяли.'};
-    if(!g.rolledPool || g.rolledPool.length === 0) g.rolledPool = [...g.dicePool];
+  const takeDie = (g, id, chosenIcon = null) => {
+    if (g.phase !== 'day') return { error: 'Сейчас ночная фаза.' };
+    if (g.rollPending) return { error: 'Сначала бросьте кубики.' };
+    const found = g.dicePool.find(d => d.id === id);
+    if (!found) return { error: 'Этот кубик уже взяли.' };
+    if (!g.rolledPool || g.rolledPool.length === 0) g.rolledPool = [...g.dicePool];
     g.takenFaces = { ...(g.takenFaces || {}), [id]: found.face };
-    const face=faceOf(found),before=JSON.parse(JSON.stringify(g));
+    const face = faceOf(found), before = JSON.parse(JSON.stringify(g));
     delete before.undoStack;
     delete before.lastDieAction;
-    if(id!==5){
-      const selected=chosenIcon==='__unusable'?['sun']:(chosenIcon?[chosenIcon]:face.icons);
-      const applied=applyIcons(g,selected,true);
-      g.dicePool=g.dicePool.filter(d=>d.id!==id);
-      const who=currentPlayer(g).name; g.active=nextPlayer(g); g.turnNumber++;
-      const earned=[]; if(applied.water)earned.push(`+${applied.water} воды`);
+    if (id !== 5) {
+      const selected = chosenIcon === '__unusable' ? ['sun'] : (chosenIcon ? [chosenIcon] : face.icons);
+      const applied = applyIcons(g, selected, true);
+      g.dicePool = g.dicePool.filter(d => d.id !== id);
+      const who = currentPlayer(g).name; g.active = nextPlayer(g); g.turnNumber++;
+      const earned = []; if (applied.water) earned.push(`+${applied.water} воды`);
       const dieSummary = `${who} взял кубик ${id}: ${face.label}${earned.length ? ` (${earned.join(', ')})` : ''}`;
-      g.lastMessage=`${who} взял кубик ${id}${earned.length?` · ${earned.join(', ')}`:''}. Передайте ход ${currentPlayer(g).name}.`;
+      g.lastMessage = `${who} взял кубик ${id}${earned.length ? ` · ${earned.join(', ')}` : ''}. Передайте ход ${currentPlayer(g).name}.`;
       g.actionHistory = [{
         turn: g.turnNumber,
         round: g.round,
@@ -155,18 +156,18 @@ window.PRH_GAME = (() => {
         time: Date.now(),
         timestamp: Date.now()
       }, ...(g.actionHistory || [])];
-      g.undoStack=[...(g.undoStack||[]),{round:g.round,before}];saveSafe(g); return {ok:true,kind:'hiking',face,selected,applied,unusable:chosenIcon==='__unusable'};
+      g.undoStack = [...(g.undoStack || []), { round: g.round, before }]; saveSafe(g); return { ok: true, kind: 'hiking', face, selected, applied, unusable: chosenIcon === '__unusable' };
     }
-    const cost=remainingHiking(g);
+    const cost = remainingHiking(g);
 
-    const selected=chosenIcon==='__unusable'?['sun']:(chosenIcon?[chosenIcon]:face.icons);
-    const applied=applyIcons(g,selected,false);
-    g.routeIndex=Math.min(g.routeIndex+1,g.routeLength);
-    const token=g.routeTokens[g.routeIndex-1];
-    const who=currentPlayer(g).name;
-    g.active=nextPlayer(g); g.turnNumber++;
-    if(g.routeIndex>=g.routeLength){g.phase='night';g.lastMessage=`${who} довёл группу до конца маршрута. Начинается ночь ${g.round}.`;}
-    else {rollNew(g);g.lastMessage=`${who} провёл группу к пункту «${token.title}» и применил кубик ведущего. Кубики переброшены для ${currentPlayer(g).name}.`;}
+    const selected = chosenIcon === '__unusable' ? ['sun'] : (chosenIcon ? [chosenIcon] : face.icons);
+    const applied = applyIcons(g, selected, false);
+    g.routeIndex = Math.min(g.routeIndex + 1, g.routeLength);
+    const token = g.routeTokens[g.routeIndex - 1];
+    const who = currentPlayer(g).name;
+    g.active = nextPlayer(g); g.turnNumber++;
+    if (g.routeIndex >= g.routeLength) { g.phase = 'night'; g.lastMessage = `${who} довёл группу до конца маршрута. Начинается ночь ${g.round}.`; }
+    else { rollNew(g); g.lastMessage = `${who} провёл группу к пункту «${token.title}» и применил кубик ведущего. Кубики переброшены для ${currentPlayer(g).name}.`; }
     const leadSummary = `${who} взял кубик ведущего (${face.label}) · переход к «${token ? token.title : ''}»`;
     g.actionHistory = [{
       turn: g.turnNumber,
@@ -185,35 +186,35 @@ window.PRH_GAME = (() => {
       time: Date.now(),
       timestamp: Date.now()
     }, ...(g.actionHistory || [])];
-    g.undoStack=[...(g.undoStack||[]),{round:g.round,before}];saveSafe(g); return {ok:true,kind:'lead',face,selected,applied,cost,token,who,unusable:chosenIcon==='__unusable'};
+    g.undoStack = [...(g.undoStack || []), { round: g.round, before }]; saveSafe(g); return { ok: true, kind: 'lead', face, selected, applied, cost, token, who, unusable: chosenIcon === '__unusable' };
   };
   const undoLastDie = g => {
-    const stack=g.undoStack||[];
-    const action=stack[stack.length-1];
-    if(action&&action.round===g.round){
-      Object.assign(g,JSON.parse(JSON.stringify(action.before)));
-      g.undoStack=stack.slice(0,-1);
+    const stack = g.undoStack || [];
+    const action = stack[stack.length - 1];
+    if (action && action.round === g.round) {
+      Object.assign(g, JSON.parse(JSON.stringify(action.before)));
+      g.undoStack = stack.slice(0, -1);
       delete g.lastDieAction;
       saveSafe(g);
-      return {ok:true};
+      return { ok: true };
     }
-    const legacy=g.lastDieAction;
-    if(!legacy||legacy.round!==g.round||legacy.phase!=='day'||g.turnNumber!==legacy.turnNumberAfter)return {error:'Нечего отменять: взятые кубики уже возвращены.'};
-    Object.assign(g,JSON.parse(JSON.stringify(legacy.before)));
+    const legacy = g.lastDieAction;
+    if (!legacy || legacy.round !== g.round || legacy.phase !== 'day' || g.turnNumber !== legacy.turnNumberAfter) return { error: 'Нечего отменять: взятые кубики уже возвращены.' };
+    Object.assign(g, JSON.parse(JSON.stringify(legacy.before)));
     delete g.lastDieAction;
     saveSafe(g);
-    return {ok:true};
+    return { ok: true };
   };
   const finishNight = g => {
-    if(g.phase!=='night') return {error:'Сейчас не ночь.'};
-    
-    if(g.round===3){g.phase='summary';g.lastMessage='Поход завершён. Подведите итоговые очки по блокнотам.';saveSafe(g);return {done:true};}
-    g.round++;g.phase='day';g.routeIndex=0;g.routeTokens=newTokens(g.count);g.dayStarter=g.active;g.undoStack=[];delete g.lastDieAction;rollNew(g);
-    g.lastMessage=`День ${g.round}. Первым ходит ${currentPlayer(g).name}; жетоны маршрута перемешаны.`;saveSafe(g);return {ok:true};
+    if (g.phase !== 'night') return { error: 'Сейчас не ночь.' };
+
+    if (g.round === 3) { g.phase = 'summary'; g.lastMessage = 'Поход завершён. Подведите итоговые очки по блокнотам.'; saveSafe(g); return { done: true }; }
+    g.round++; g.phase = 'day'; g.routeIndex = 0; g.routeTokens = newTokens(g.count); g.dayStarter = g.active; g.undoStack = []; delete g.lastDieAction; rollNew(g);
+    g.lastMessage = `День ${g.round}. Первым ходит ${currentPlayer(g).name}; жетоны маршрута перемешаны.`; saveSafe(g); return { ok: true };
   };
-  const parkBonusCost = g => D.parks.find(p=>p.id===g.parkId).bonusCost;
-  const rollForTurn = g => { if(g.phase!=='day'||!g.rollPending) return false; const pool = rollPool(); g.dicePool=pool; g.rolledPool=pool; g.takenFaces={}; g.rollPending=false; g.lastMessage=`Кубики брошены. Ходит ${currentPlayer(g).name}.`; saveSafe(g); return true; };
-  const rerollForTurn = g => { if(g.phase!=='day'||g.rollPending||(g.dicePool.length!==5&&g.dicePool.length!==0)) return false; const pool = rollPool(); g.dicePool=pool; g.rolledPool=pool; g.takenFaces={}; g.lastMessage=`Кубики переброшены. Ходит ${currentPlayer(g).name}.`; saveSafe(g); return true; };
+  const parkBonusCost = g => D.parks.find(p => p.id === g.parkId).bonusCost;
+  const rollForTurn = g => { if (g.phase !== 'day' || !g.rollPending) return false; const pool = rollPool(); g.dicePool = pool; g.rolledPool = pool; g.takenFaces = {}; g.rollPending = false; g.lastMessage = `Кубики брошены. Ходит ${currentPlayer(g).name}.`; saveSafe(g); return true; };
+  const rerollForTurn = g => { if (g.phase !== 'day' || g.rollPending || (g.dicePool.length !== 5 && g.dicePool.length !== 0)) return false; const pool = rollPool(); g.dicePool = pool; g.rolledPool = pool; g.takenFaces = {}; g.lastMessage = `Кубики переброшены. Ходит ${currentPlayer(g).name}.`; saveSafe(g); return true; };
 
   const exportSave = g => {
     return JSON.stringify({ version: 2, app: 'parks-roll-hike', slug: SLUG, timestamp: Date.now(), data: g }, null, 2);
