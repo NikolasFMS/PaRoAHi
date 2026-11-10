@@ -46,7 +46,8 @@
     binoculars: "binoculars",
     water: "water",
     pencil: "pencil",
-    canteen: "canteen",
+    canteen: "water",
+    arrowhead: "arrowhead",
     bear: "bear",
     turtle: "turtle",
     fish: "fish",
@@ -381,17 +382,26 @@
     trackSuns: false,
     nightChecklist: false,
   });
+  const park = () =>
+    D.parks.find((p) => p.id === (game && game.parkId)) ||
+    D.parks.find((p) => p.id === setupPark) ||
+    D.parks[0];
   const iconHTML = (key, small = false) => {
     if (key === "sun")
       return '<span class="sun-emoji" aria-label="солнце">☀</span>';
-    if (key === "park")
+    if (key === "park") {
+      const p = park();
+      const lSrc = p && p.landmarkIcon && D.assets[p.landmarkIcon];
+      if (lSrc) {
+        return `<img ${small ? 'class="small-symbol"' : ""} class="icons landmark-symbol" src="${lSrc}" alt="${esc(p.landmark)}">`;
+      }
       return '<span class="site-text" aria-label="достопримечательность">✦</span>';
+    }
+    if (key === "canteen") key = "water";
     const src = D.assets[key] || D.assets[keyIcon[key]];
     if (!src) return `<span class="site-text">${esc(key)}</span>`;
     return `<img ${small ? 'class="small-symbol"' : ""} class="icons" src="${src}" alt="${esc(key)}">`;
   };
-  const park = () =>
-    D.parks.find((p) => p.id === (game && game.parkId)) || D.parks[0];
   const showToast = (text) => {
     const t = $("toast");
     t.textContent = text;
@@ -399,10 +409,25 @@
     clearTimeout(toastHandle);
     toastHandle = setTimeout(() => t.classList.remove("show"), 2700);
   };
+  const scrollToRouteCard = () => {
+    setTimeout(() => {
+      const card = document.querySelector(".route-card");
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+  };
   const showModal = (html) => {
     $("modalBody").innerHTML = html;
     $("modalBackdrop").hidden = false;
     document.body.classList.add("modal-open");
+    const m = document.querySelector(".modal");
+    if (m) {
+      m.scrollTop = 0;
+      setTimeout(() => {
+        m.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+    }
   };
   const hideModal = () => {
     $("modalBackdrop").hidden = true;
@@ -416,6 +441,8 @@
     $("appFooter").hidden = !["board", "night", "summary"].includes(id);
     if (!["board", "night", "summary"].includes(id))
       window.scrollTo({ top: 0, behavior: "smooth" });
+    else if (id === "board")
+      scrollToRouteCard();
   };
   const setStartButton = () => {
     const resumable = game && ["day", "night", "summary"].includes(game.phase);
@@ -463,12 +490,19 @@
       ? "Случайный выбор"
       : "Выбор вручную";
     const selected = D.parks.find((p) => p.id === setupPark) || D.parks[0];
+    const selectedIcon = D.assets[selected.landmarkIcon]
+      ? `<img src="${D.assets[selected.landmarkIcon]}" style="width:16px;height:16px;vertical-align:middle;display:inline-block;margin-right:4px;" alt="">`
+      : "";
     $("selectedParkNote").innerHTML =
-      `<strong>${esc(selected.name)}</strong> · уникальная достопримечательность: ${esc(selected.landmark)}. ${setupRandom ? "Случайный парк уже выбран." : "Парк выбран вручную."}`;
+      `<strong>${esc(selected.name)}</strong> · ${selectedIcon}достопримечательность: <strong>${esc(selected.landmark)}</strong>. ${setupRandom ? "Случайный парк уже выбран." : "Парк выбран вручную."}`;
   };
   const renderParkSummary = (target, p) => {
+    const landmarkSrc = D.assets[p.landmarkIcon];
+    const landmarkImg = landmarkSrc
+      ? `<img src="${landmarkSrc}" class="summary-landmark-img" alt="${esc(p.landmark)}" style="width:18px;height:18px;vertical-align:middle;display:inline-block;margin-right:6px;">`
+      : "";
     const rows = [
-      ["Достопримечательность", `${p.landmark} · ${p.journal}`],
+      ["Достопримечательность", `${landmarkImg}<strong>${esc(p.landmark)}</strong> · ${esc(p.journal)}`],
       ["Ночной бонус", p.night],
       ["Подсчёт очков", p.score],
     ];
@@ -476,7 +510,7 @@
     target.innerHTML = rows
       .map(
         ([a, b]) =>
-          `<div class="rule-block"><strong>${esc(a)}</strong><span>${esc(b)}</span></div>`,
+          `<div class="rule-block"><strong>${esc(a)}</strong><span>${b}</span></div>`,
       )
       .join("");
   };
@@ -500,30 +534,72 @@
   };
   const playerAvatar = (name) =>
     Array.from(name.trim())[0]?.toUpperCase() || "✦";
+  let pendingLeadMove = null;
+
+  const executeLeadMove = () => {
+    if (!pendingLeadMove) return;
+    const move = pendingLeadMove;
+    pendingLeadMove = null;
+    hideModal();
+    scrollToRouteCard();
+
+    // Now render the updated position: token smoothly travels to move.toIndex!
+    renderRoute();
+
+    if (move.isFinish) {
+      setTimeout(() => {
+        if (game) renderNight();
+        showToast("Группа пришла в лагерь на финише · начинается ночь!");
+      }, 950);
+    } else {
+      showToast(
+        `Группа продвинулась к стоянке ${move.toIndex}; следующий игрок бросает кубики`,
+      );
+    }
+  };
+
   const renderRoute = () => {
     const wrap = $("trailMarkers"),
       points = G.routePoints.slice(0, game.routeLength);
     $("startMarker").style.left = `${G.startPoint.x}%`;
     $("startMarker").style.top = `${G.startPoint.y}%`;
+
+    const activeIndex = pendingLeadMove
+      ? pendingLeadMove.fromIndex
+      : game.routeIndex;
+
     wrap.innerHTML = points
       .map((pt, i) => {
         const token = game.routeTokens[i];
-        const isFinal = i === game.routeLength - 1;
         const cls = [
           "trail-marker",
-          game.routeIndex > i ? "visited" : "",
-          game.routeIndex === i + 1 ? "current-site" : "",
-          isFinal ? "final-marker" : "",
+          activeIndex > i ? "visited" : "",
+          activeIndex === i + 1 ? "current-site" : "",
         ]
           .filter(Boolean)
           .join(" ");
-        return `<div class="${cls}" style="left:${pt.x}%;top:${pt.y}%" title="${esc(token.title)}${isFinal ? " · финиш" : ""}">${token.icon === "park" ? '<span class="site-text">✦</span>' : iconHTML(token.icon)}</div>`;
+        return `<div class="${cls}" style="left:${pt.x}%;top:${pt.y}%" title="Стоянка ${i + 1}: ${esc(token.title)}">${iconHTML(token.icon)}</div>`;
       })
       .join("");
+
+    // Update finishMarker state
+    const finishEl = $("finishMarker");
+    if (finishEl) {
+      finishEl.style.left = `${G.finishPoint.x}%`;
+      finishEl.style.top = `${G.finishPoint.y}%`;
+      const isReached = activeIndex > game.routeLength;
+      const isNext = activeIndex === game.routeLength;
+      finishEl.classList.toggle("reached", isReached);
+      finishEl.classList.toggle("visited", isReached);
+      finishEl.classList.toggle("current-site", isNext);
+    }
+
     const pos =
-      game.routeIndex === 0
+      activeIndex === 0
         ? G.startPoint
-        : points[game.routeIndex - 1] || points[0];
+        : activeIndex <= game.routeLength
+          ? points[activeIndex - 1] || points[0]
+          : G.finishPoint;
 
     const tokenEl = $("groupToken");
     const prevLeft = tokenEl.style.left;
@@ -536,28 +612,38 @@
       void tokenEl.offsetWidth;
       tokenEl.classList.add("moving");
       triggerHaptic(40);
-      setTimeout(() => tokenEl.classList.remove("moving"), 800);
+      setTimeout(() => tokenEl.classList.remove("moving"), 900);
     }
 
-    $("routeCount").textContent = `${game.routeIndex} / ${game.routeLength}`;
-    const next = game.routeTokens[game.routeIndex];
+    $("routeCount").textContent =
+      activeIndex > game.routeLength
+        ? "ФИНИШ"
+        : `${activeIndex} / ${game.routeLength}`;
+
+    const next = game.routeTokens[activeIndex];
     $("routeTitle").textContent =
-      game.routeIndex >= game.routeLength
-        ? "День завершён"
-        : game.routeIndex === 0
-          ? "Группа у тропы"
-          : "Группа в пути";
-    if (game.routeIndex === 0)
+      activeIndex > game.routeLength
+        ? "Лагерь на финише"
+        : activeIndex === game.routeLength
+          ? "Последняя стоянка"
+          : activeIndex === 0
+            ? "Группа у тропы"
+            : "Группа в пути";
+
+    if (activeIndex === 0) {
       $("routeStatus").innerHTML =
-        `Группа на старте. Следующая стоянка: <strong>${esc(next.title)}</strong>. Кубик ведущего: потратьте ${G.remainingHiking(game)} ☀.`;
-    else if (game.routeIndex < game.routeLength) {
-      const current = game.routeTokens[game.routeIndex - 1];
+        `Группа на старте. Следующая стоянка: <strong>${esc(next ? next.title : "")}</strong>. Кубик ведущего: потратьте ${G.remainingHiking(game)} ☀.`;
+    } else if (activeIndex < game.routeLength) {
+      const current = game.routeTokens[activeIndex - 1];
       $("routeStatus").innerHTML =
-        `<strong>Стоянка ${game.routeIndex}: ${esc(current.title)}.</strong> ${esc(current.instruction)} Следующая: <strong>${esc(next.title)}</strong>.`;
-    } else {
+        `<strong>Стоянка ${activeIndex}: ${esc(current.title)}.</strong> ${esc(current.instruction)} Следующая: <strong>${esc(next ? next.title : "")}</strong>.`;
+    } else if (activeIndex === game.routeLength) {
       const current = game.routeTokens[game.routeLength - 1];
       $("routeStatus").innerHTML =
-        `<strong>Финиш · стоянка ${game.routeLength}: ${esc(current.title)}.</strong> ${esc(current.instruction)} Выполните действия ночной фазы.`;
+        `<strong>Стоянка ${activeIndex}: ${esc(current.title)}.</strong> ${esc(current.instruction)} Все стоянки пройдены! Следующий ход ведущего переводит группу в <strong>Лагерь на финише</strong>.`;
+    } else {
+      $("routeStatus").innerHTML =
+        `<strong>ФИНИШ · Лагерь похода.</strong> Дневной маршрут завершён. Группа на ночлеге — выполните действия ночной фазы.`;
     }
   };
   const renderDice = () => {
@@ -597,11 +683,45 @@
           if (fromRolled) faceIndex = fromRolled.face;
         }
 
-        const face = faceIndex !== null && faceIndex !== undefined ? d.faces[faceIndex] : null;
+        const face =
+          faceIndex !== null && faceIndex !== undefined
+            ? d.faces[faceIndex]
+            : null;
         const cost = d.id === 5 ? G.remainingHiking(game) : 0;
-        const faceHtml = face
-          ? `<div class="die-face ${used ? "die-face-used" : ""}">${face.icons.map((k, i) => `${i && face.slash ? '<span class="slash">/</span>' : ""}${iconHTML(k, face.icons.length > 1)}`).join("")}</div><div class="die-caption">${esc(face.label)}</div>`
-          : `<div class="die-face">${d.lead ? "🟠" : "⬜"}</div><div class="die-caption">${used ? "Кубик взят" : "—"}</div>`;
+        let faceHtml = "";
+        const chosenIcon =
+          used && game.takenChoices ? game.takenChoices[d.id] : null;
+
+        if (face) {
+          if (used && face.slash && chosenIcon) {
+            // Requirement 3: After choosing a slash symbol, display ONLY the chosen symbol and caption!
+            const isUnusableSun =
+              chosenIcon === "__unusable" || chosenIcon === "sun";
+            const effectiveIcon = isUnusableSun ? "sun" : chosenIcon;
+            const iconNameMap = {
+              bear: "Медведь",
+              turtle: "Черепаха",
+              fish: "Рыба",
+              bird: "Птица",
+              sun: "Солнце (+1 ☀)",
+              water: "Вода",
+              canteen: "Вода",
+              pencil: "Карандаш",
+              binoculars: "Бинокль",
+              flower: "Луг",
+              forest: "Лес",
+              mountain: "Гора",
+              park: "Парк",
+            };
+            const labelText = iconNameMap[effectiveIcon] || effectiveIcon;
+            faceHtml = `<div class="die-face die-face-used">${iconHTML(effectiveIcon)}</div><div class="die-caption">${esc(labelText)}</div>`;
+          } else {
+            faceHtml = `<div class="die-face ${used ? "die-face-used" : ""}">${face.icons.map((k, i) => `${i && face.slash ? '<span class="slash">/</span>' : ""}${iconHTML(k, face.icons.length > 1)}`).join("")}</div><div class="die-caption">${esc(face.label)}</div>`;
+          }
+        } else {
+          faceHtml = `<div class="die-face">${d.lead ? "🟠" : "⬜"}</div><div class="die-caption">${used ? "Кубик взят" : "—"}</div>`;
+        }
+
         const title =
           d.id === 5
             ? `Кубик ведущего · цена ${cost} ☀`
@@ -840,7 +960,7 @@
       ["park", park().landmark],
     ];
     showModal(
-      `<span class="eyebrow">Жетон бинокля</span><h2 id="modalTitle">Что увидела группа?</h2><p>Ведущий отмечает Бинокль в блокноте и выбирает, что увидела группа. Все игроки могут бесплатно добавить одну линию на соответствующую доступную страницу.</p><p>${esc(actionSummary(result.face, result.selected, result.applied, true, result.cost, result.unusable))}</p><div class="token-modal-list">${choices.map(([icon, label]) => `<button class="token-option" data-binocular-call="${icon}">${iconHTML(icon === "park" ? "park" : icon)}<span>${esc(label)}</span></button>`).join("")}</div>`,
+      `<span class="eyebrow">Жетон бинокля · стоянка ${result.newIndex} из ${game.routeLength}</span><h2 id="modalTitle">Что увидела группа?</h2><p>Ведущий отмечает Бинокль в блокноте и выбирает, что увидела группа. Все игроки могут бесплатно добавить одну линию на соответствующую доступную страницу. Фишка переместится к стоянке сразу после выбора.</p><p>${esc(actionSummary(result.face, result.selected, result.applied, true, result.cost, result.unusable))}</p><div class="token-modal-list">${choices.map(([icon, label]) => `<button class="token-option" data-binocular-call="${icon}">${iconHTML(icon === "park" ? "park" : icon)}<span>${esc(label)}</span></button>`).join("")}</div>`,
     );
   };
   const commitDie = (id, chosen = null) => {
@@ -851,20 +971,35 @@
       return;
     }
     game = G.load() || game;
-    renderCurrent();
+
     if (result.kind === "lead") {
-      const token = result.token;
-      if (token.id === "binoculars") callBinocular(token, result);
-      else
+      pendingLeadMove = {
+        fromIndex: result.prevIndex,
+        toIndex: result.newIndex,
+        isFinish: result.isFinish,
+        token: result.token,
+        face: result.face,
+        cost: result.cost,
+      };
+      renderCurrent();
+      scrollToRouteCard();
+
+      if (result.isFinish) {
         showModal(
-          `<span class="eyebrow">Группа передвинута</span><h2 id="modalTitle">${esc(token.title)}${game.routeIndex === game.routeLength ? " · финиш" : ""}</h2><p>${esc(token.instruction)}</p><p><strong>${esc(actionSummary(result.face, result.selected, result.applied, true, result.cost, result.unusable))}</strong></p><div class="modal-actions"><button class="btn btn-primary" data-close-modal>Понятно</button></div>`,
+          `<span class="eyebrow">Финиш дневного перехода</span><h2 id="modalTitle">Лагерь на финише ⛺</h2><p>Все стоянки пройдены! Группа завершает дневной переход по тропе и направляется в лагерь.</p><p><strong>${esc(actionSummary(result.face, result.selected, result.applied, true, result.cost, result.unusable))}</strong></p><div class="modal-actions"><button class="btn btn-primary" data-confirm-lead-step>В лагерь на ночлег ➔</button></div>`,
         );
-      showToast(
-        game.phase === "night"
-          ? "Достигнут конец дневного маршрута"
-          : "Группа продвинулась; следующий игрок бросает кубики",
-      );
-    } else
+      } else {
+        const token = result.token;
+        if (token && token.id === "binoculars") {
+          callBinocular(token, result);
+        } else if (token) {
+          showModal(
+            `<span class="eyebrow">Стоянка ${result.newIndex} из ${game.routeLength}</span><h2 id="modalTitle">${esc(token.title)}</h2><p>${esc(token.instruction)}</p><p><strong>${esc(actionSummary(result.face, result.selected, result.applied, true, result.cost, result.unusable))}</strong></p><div class="modal-actions"><button class="btn btn-primary" data-confirm-lead-step>Понятно ➔</button></div>`,
+          );
+        }
+      }
+    } else {
+      renderCurrent();
       showToast(
         actionSummary(
           result.face,
@@ -875,6 +1010,7 @@
           result.unusable,
         ),
       );
+    }
   };
   const chooseDie = (id) => {
     if (!game || game.rollPending) return;
@@ -888,6 +1024,21 @@
       pl = game.players[playerIndex];
     const key = `${game.round}:${playerIndex}`,
       used = game.parkUsed[key] || [];
+    if (p.id === "yosemite") {
+      const opts = [
+        { id: "bino_pencil", label: "Бинокль + Карандаш", iconA: "binoculars", iconB: "pencil" },
+        { id: "bino_water", label: "Бинокль + Вода", iconA: "binoculars", iconB: "water" },
+        { id: "pencil_water", label: "Карандаш + Вода", iconA: "pencil", iconB: "water" },
+      ];
+      if (settings().trackParkUse && used.includes("park")) {
+        showToast("Бонус парка уже применён этим игроком в эту ночь.");
+        return;
+      }
+      showModal(
+        `<span class="eyebrow">Ночной бонус Yosemite · ${esc(pl.name)}</span><h2 id="modalTitle">Выберите 2 разных бонуса (2 ☀)</h2><p>Потратьте 2 ☀, чтобы взять два разных бонуса из трёх: Бинокль, Карандаш или Вода. Отметьте выбранные бонусы в блокноте.</p><div class="token-modal-list">${opts.map((o) => `<button class="token-option" data-yosemite-option="${o.id}" data-bonus-player="${playerIndex}"><span class="sun-emoji">☀ 2</span><span>${iconHTML(o.iconA, true)} + ${iconHTML(o.iconB, true)} · <strong>${esc(o.label)}</strong></span></button>`).join("")}</div>`,
+      );
+      return;
+    }
     if (p.id === "glacier") {
       const opts = [
         { id: "score", cost: 2, text: "+3 очка фляги за этот раунд" },
@@ -1003,7 +1154,7 @@
     icons
       .map(
         (key, i) =>
-          `<div class="dice-modal-details"><strong>${esc({ sun: "Солнце", water: "Вода", canteen: "Вода", pencil: "Карандаш", binoculars: "Бинокль", park: "Достопримечательность парка", flower: "Луг", forest: "Лес", mountain: "Гора", bear: "Медведь", turtle: "Черепаха", fish: "Рыба", bird: "Птица" }[key] || key)}</strong>${esc(symbolDescription(key))}</div>`,
+          `<div class="dice-modal-details"><strong>${esc({ sun: "Солнце", water: "Вода", canteen: "Вода", pencil: "Карандаш", binoculars: "Бинокль", park: `Достопримечательность (${park().landmark})`, flower: "Луг", forest: "Лес", mountain: "Гора", bear: "Медведь", turtle: "Черепаха", fish: "Рыба", bird: "Птица" }[key] || key)}</strong>${esc(symbolDescription(key))}</div>`,
       )
       .join("");
   const openDieModal = (id, face) => {
@@ -1012,8 +1163,11 @@
       costText = `Отметь расход ${cost} ☀ в бумажном блокноте за ${G.remainingHiking(game)} оставшихся кубиков похода.`;
     const faceHTML = `<div class="dice-modal-face">${face.icons.map((k) => iconHTML(k)).join(face.slash ? '<span class="slash">/</span>' : "")}</div>`;
     const nextToken = game.routeTokens[game.routeIndex];
+    const isMovingToFinish = lead && game.routeIndex >= game.routeLength;
     const leadText = lead
-      ? `<div class="dice-modal-details"><strong>Действие ведущего · ${cost} ☀</strong>${esc(costText)} Жетон «${esc(nextToken.title)}»: ${esc(nextToken.instruction)} Все игроки могут добавить бесплатную линию на подходящей странице. Затем следующий игрок бросает все кубики.</div>`
+      ? isMovingToFinish
+        ? `<div class="dice-modal-details"><strong>Действие ведущего · Переход в лагерь на финише (цена ${cost} ☀)</strong>${esc(costText)} Все стоянки тропы пройдены! Взятие этого кубика переместит группу в <strong>Лагерь на финише ⛺</strong> и завершит дневной переход (начнётся Ночная фаза).</div>`
+        : `<div class="dice-modal-details"><strong>Действие ведущего · Стоянка ${game.routeIndex + 1} из ${game.routeLength} (цена ${cost} ☀)</strong>${esc(costText)} Жетон «${esc(nextToken ? nextToken.title : "")}»: ${esc(nextToken ? nextToken.instruction : "")} Все игроки могут добавить бесплатную линию на подходящей странице. Затем следующий игрок бросает все кубики.</div>`
       : "";
     pendingChoice = { id, choice: null, needsChoice: face.slash };
     const instructions = face.slash
@@ -1174,18 +1328,34 @@
   });
   $("modalClose").addEventListener("click", () => {
     pendingChoice = null;
-    hideModal();
+    if (pendingLeadMove) {
+      executeLeadMove();
+    } else {
+      hideModal();
+    }
   });
   $("modalBackdrop").addEventListener("click", (e) => {
     if (e.target === $("modalBackdrop")) {
       pendingChoice = null;
-      hideModal();
+      if (pendingLeadMove) {
+        executeLeadMove();
+      } else {
+        hideModal();
+      }
     }
   });
   $("modalBody").addEventListener("click", (e) => {
+    if (e.target.closest("[data-confirm-lead-step]")) {
+      executeLeadMove();
+      return;
+    }
     if (e.target.closest("[data-close-modal]")) {
       pendingChoice = null;
-      hideModal();
+      if (pendingLeadMove) {
+        executeLeadMove();
+      } else {
+        hideModal();
+      }
       return;
     }
     const faceChoice = e.target.closest("[data-face-choice]");
@@ -1222,9 +1392,29 @@
             ];
       game.lastMessage = `Жетон Бинокля: всем игрокам бесплатно добавить линию на доступной странице «${label}».`;
       G.saveSafe(game);
-      hideModal();
-      renderCurrent();
+      executeLeadMove();
       showToast(`Все игроки: бесплатная линия · ${label}`);
+      return;
+    }
+    const yosemiteOpt = e.target.closest("[data-yosemite-option]");
+    if (yosemiteOpt) {
+      const i = Number(yosemiteOpt.dataset.bonusPlayer),
+        pl = game.players[i],
+        key = `${game.round}:${i}`,
+        used = game.parkUsed[key] || [];
+      const labelMap = {
+        bino_pencil: "Бинокль и Карандаш",
+        bino_water: "Бинокль и Вода",
+        pencil_water: "Карандаш и Вода",
+      };
+      const text = labelMap[yosemiteOpt.dataset.yosemiteOption] || "два разных бонуса";
+      if (settings().trackParkUse) game.parkUsed[key] = [...used, "park"];
+      game.lastMessage = `${pl.name} потратил 2 ☀ на ночной бонус Yosemite: ${text}.`;
+      G.saveSafe(game);
+      hideModal();
+      renderNight();
+      showToast(`${pl.name}: расход 2 ☀ · бонусы: ${text}`);
+      return;
     }
     const opt = e.target.closest("[data-glacier-option]");
     if (opt) {
