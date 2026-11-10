@@ -966,7 +966,6 @@ main {
 
 .park-detail-image {
     width: 100%;
-    height: 360px;
     object-fit: contain;
     background: #f3e7c7;
     border-radius: 13px;
@@ -1442,7 +1441,6 @@ main {
     }
 
     .park-detail-image {
-        height: 295px
     }
 
     .dice-pool {
@@ -1750,7 +1748,6 @@ main {
     }
 
     .park-detail-image {
-        height: 300px
     }
 }
 
