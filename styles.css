@@ -729,6 +729,27 @@ main {
     color: var(--red)
 }
 
+.trail-marker .icons.landmark-symbol,
+.trail-marker .landmark-icon {
+    width: 62%;
+    height: 62%;
+    object-fit: contain;
+}
+
+.summary-landmark-img {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+body.theme-campfire .summary-landmark-img,
+body.theme-campfire .die-face .landmark-symbol,
+body.theme-campfire .choice-button .landmark-symbol {
+    filter: invert(0.88) brightness(1.15);
+}
+
 .trail-marker.final-marker {
     border-radius: 50%;
     background: #fff1d0
@@ -745,6 +766,39 @@ main {
     font-size: .48rem;
     font-weight: 900;
     letter-spacing: .08em
+}
+
+.trail-marker.finish-marker {
+    width: 42px;
+    height: 42px;
+    border: 2px dashed #9d2b1f;
+    background: #fff8e7;
+    color: var(--red);
+    padding: 0;
+    border-radius: 50%;
+    font-size: .46rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 3px 8px #32250a33;
+    z-index: 2;
+    transition: all .3s ease;
+}
+
+.trail-marker.finish-marker.current-site {
+    border-style: solid;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 4px #e9972880, 0 4px 9px #33220d44;
+    z-index: 4;
+}
+
+.trail-marker.finish-marker.visited,
+.trail-marker.finish-marker.reached {
+    background: var(--red);
+    color: white;
+    border-style: solid;
+    border-color: var(--red);
 }
 
 .group-token {
@@ -1615,7 +1669,12 @@ main {
 
     .trail-marker { width: 32px; height: 32px }
 
-    .trail-marker.start-marker { font-size: .39rem }
+    .trail-marker.start-marker,
+    .trail-marker.finish-marker {
+        font-size: .38rem;
+        width: 32px;
+        height: 32px;
+    }
 
     
 
