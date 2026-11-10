@@ -552,7 +552,6 @@ main {
 .game-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.65fr) minmax(285px, .85fr);
-    gap: 20px;
     align-items: start
 }
 
@@ -1471,7 +1470,7 @@ main {
     }
 
     .topbar {
-        height: 62px
+        height: 55px
     }
 
     .brand-mini img {
