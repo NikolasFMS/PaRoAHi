@@ -49,9 +49,10 @@ window.PRH_GAME = (() => {
   };
 
   const routePoints = [
-    { x: 41.0, y: 33.0 }, { x: 82.0, y: 54.8 }, { x: 15.2, y: 54.5 }, { x: 28.5, y: 83.0 }, { x: 66.3, y: 88.0 }, { x: 66.3, y: 88.0 }
+    { x: 41.0, y: 33.0 }, { x: 82.0, y: 54.8 }, { x: 15.2, y: 54.5 }, { x: 28.5, y: 83.0 }, { x: 66.3, y: 88.0 }
   ];
   const startPoint = { x: 15.5, y: 21.8 };
+  const finishPoint = { x: 85.0, y: 85.0 };
   const shuffle = list => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; };
   const randomPark = () => D.parks[Math.floor(Math.random() * D.parks.length)];
   const rollPool = () => D.dice.map(d => ({ id: d.id, face: Math.floor(Math.random() * d.faces.length) }));
@@ -117,7 +118,7 @@ window.PRH_GAME = (() => {
   const remainingHiking = g => g.dicePool.filter(d => d.id !== 5).length;
   const faceOf = die => D.dice.find(d => d.id === die.id).faces[die.face];
   const nextPlayer = g => (g.active + 1) % g.count;
-  const rollNew = g => { g.dicePool = []; g.rolledPool = []; g.takenFaces = {}; g.rollPending = true; };
+  const rollNew = g => { g.dicePool = []; g.rolledPool = []; g.takenFaces = {}; g.takenChoices = {}; g.rollPending = true; };
   const applyIcons = (g, icons, isHiking = true) => {
     const water = icons.filter(i => i === 'water' || i === 'canteen').length;
     return { water: isHiking && g.parkId === 'death-valley' ? 0 : water };
@@ -129,6 +130,7 @@ window.PRH_GAME = (() => {
     if (!found) return { error: 'Этот кубик уже взяли.' };
     if (!g.rolledPool || g.rolledPool.length === 0) g.rolledPool = [...g.dicePool];
     g.takenFaces = { ...(g.takenFaces || {}), [id]: found.face };
+    g.takenChoices = { ...(g.takenChoices || {}), [id]: chosenIcon };
     const face = faceOf(found), before = JSON.parse(JSON.stringify(g));
     delete before.undoStack;
     delete before.lastDieAction;
@@ -148,6 +150,7 @@ window.PRH_GAME = (() => {
         dieId: id,
         faceLabel: face.label,
         faceIcons: face.icons,
+        chosenIcon,
         text: dieSummary,
         summary: dieSummary,
         detail: g.lastMessage,
@@ -162,13 +165,30 @@ window.PRH_GAME = (() => {
 
     const selected = chosenIcon === '__unusable' ? ['sun'] : (chosenIcon ? [chosenIcon] : face.icons);
     const applied = applyIcons(g, selected, false);
-    g.routeIndex = Math.min(g.routeIndex + 1, g.routeLength);
-    const token = g.routeTokens[g.routeIndex - 1];
     const who = currentPlayer(g).name;
-    g.active = nextPlayer(g); g.turnNumber++;
-    if (g.routeIndex >= g.routeLength) { g.phase = 'night'; g.lastMessage = `${who} довёл группу до конца маршрута. Начинается ночь ${g.round}.`; }
-    else { rollNew(g); g.lastMessage = `${who} провёл группу к пункту «${token.title}» и применил кубик ведущего. Кубики переброшены для ${currentPlayer(g).name}.`; }
-    const leadSummary = `${who} взял кубик ведущего (${face.label}) · переход к «${token ? token.title : ''}»`;
+    const prevIndex = g.routeIndex;
+    const maxSteps = g.routeLength + 1; // All sites 1..routeLength, then finish camp step
+    const newIndex = Math.min(g.routeIndex + 1, maxSteps);
+    g.routeIndex = newIndex;
+    g.active = nextPlayer(g);
+    g.turnNumber++;
+
+    const isFinish = newIndex >= maxSteps;
+    let token = null;
+
+    if (!isFinish) {
+      token = g.routeTokens[newIndex - 1];
+      rollNew(g);
+      g.lastMessage = `${who} провёл группу к стоянке «${token.title}» и применил кубик ведущего. Кубики переброшены для ${currentPlayer(g).name}.`;
+    } else {
+      g.phase = 'night';
+      g.lastMessage = `${who} привёл группу в лагерь на финише. Начинается ночь ${g.round}.`;
+    }
+
+    const leadSummary = isFinish
+      ? `${who} взял кубик ведущего (${face.label}) · переход в лагерь на финише`
+      : `${who} взял кубик ведущего (${face.label}) · переход к стоянке «${token ? token.title : ''}»`;
+
     g.actionHistory = [{
       turn: g.turnNumber,
       round: g.round,
@@ -177,7 +197,7 @@ window.PRH_GAME = (() => {
       dieId: 5,
       faceLabel: `Ведущий · ${face.label}`,
       faceIcons: face.icons,
-      tokenTitle: token ? token.title : '',
+      tokenTitle: token ? token.title : 'Лагерь на финише',
       text: leadSummary,
       summary: leadSummary,
       detail: g.lastMessage,
@@ -186,7 +206,7 @@ window.PRH_GAME = (() => {
       time: Date.now(),
       timestamp: Date.now()
     }, ...(g.actionHistory || [])];
-    g.undoStack = [...(g.undoStack || []), { round: g.round, before }]; saveSafe(g); return { ok: true, kind: 'lead', face, selected, applied, cost, token, who, unusable: chosenIcon === '__unusable' };
+    g.undoStack = [...(g.undoStack || []), { round: g.round, before }]; saveSafe(g); return { ok: true, kind: 'lead', face, selected, applied, cost, token, who, unusable: chosenIcon === '__unusable', isFinish, prevIndex, newIndex };
   };
   const undoLastDie = g => {
     const stack = g.undoStack || [];
@@ -248,6 +268,7 @@ window.PRH_GAME = (() => {
     STORE_BACKUP,
     routePoints,
     startPoint,
+    finishPoint,
     shuffle,
     randomPark,
     makeGame,
