@@ -1860,7 +1860,6 @@ main {
 
 .modal-park-image {
     width: 100%;
-    height: min(48vh, 420px);
     object-fit: contain;
     background: #f3e7c7;
     border-radius: 13px;
