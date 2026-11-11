@@ -1019,11 +1019,22 @@ body.theme-campfire .choice-button .landmark-symbol {
 }
 
 .park-detail-image {
+    display: block;
     width: 100%;
+    max-width: 100%;
+    height: auto;
     object-fit: contain;
     background: #f3e7c7;
     border-radius: 13px;
-    margin-top: 13px
+    margin-top: 13px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.park-detail-image:hover {
+    transform: scale(1.01);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.14);
 }
 
 .park-rule-summary {
@@ -1148,12 +1159,14 @@ body.theme-campfire .choice-button .landmark-symbol {
 
 .night-park-image {
     display: block;
-    height: 260px;
     width: 100%;
+    max-width: 100%;
+    height: auto;
     object-fit: contain;
     background: #f3e7c7;
     border-radius: 13px;
-    margin-top: 13px
+    margin-top: 13px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
 .small-note {
@@ -1771,8 +1784,10 @@ body.theme-campfire .choice-button .landmark-symbol {
         padding: 18px
     }
 
-    .night-park-image {
-        height: 220px
+    .night-park-image,
+    .park-detail-image {
+        width: 100%;
+        height: auto;
     }
 
     .scoreboard {
@@ -2322,6 +2337,37 @@ border: 1px solid var(--line);
     font-size: .72rem;
     color: var(--muted);
     line-height: 1.35;
+}
+
+.history-chosen-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+    padding: 2px 7px;
+    background: #eef5e4;
+    border-left: 3px solid var(--green);
+    border-radius: 4px;
+    font-size: .75rem;
+    color: var(--ink);
+}
+
+.chosen-tag {
+    font-size: .65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--green);
+}
+
+body.theme-campfire .history-chosen-row {
+    background: #2a241b;
+    border-left-color: var(--orange);
+    color: #f7eed8;
+}
+
+body.theme-campfire .chosen-tag {
+    color: var(--orange);
 }
 
 .history-badge {
