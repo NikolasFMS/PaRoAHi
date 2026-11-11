@@ -771,7 +771,7 @@ body.theme-campfire .choice-button .landmark-symbol {
 .trail-marker.finish-marker {
     width: 42px;
     height: 42px;
-    border: 2px dashed #9d2b1f;
+    border: 2px solid #9d2b1f;
     background: #fff8e7;
     color: var(--red);
     padding: 0;
@@ -1684,7 +1684,7 @@ body.theme-campfire .choice-button .landmark-symbol {
 
     .trail-marker.start-marker,
     .trail-marker.finish-marker {
-        font-size: .38rem;
+        font-size: .3rem;
         width: 32px;
         height: 32px;
     }
