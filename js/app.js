@@ -47,7 +47,7 @@
     water: "water",
     pencil: "pencil",
     canteen: "water",
-    arrowhead: "arrowhead",
+    arrowhead: null,
     bear: "bear",
     turtle: "turtle",
     fish: "fish",
@@ -251,11 +251,11 @@
 
         const playerName = act.playerName || act.who || "Игрок";
         const badgeCls = isLead ? "history-badge lead" : "history-badge";
-        const icon = isLead
-          ? "🟠 Ведущий"
+        const badgeText = isLead
+          ? "Ведущий"
           : dieId
-            ? `🎲 Кубик ${dieId}`
-            : "🎲 Поход";
+            ? `Кубик ${dieId}`
+            : "Поход";
 
         const timeVal = act.timestamp || act.time;
         const time = timeVal
@@ -275,19 +275,40 @@
               : "Ход похода");
         const summaryText = act.summary || act.text || "";
 
-        let iconsHtml = "";
-        if (act.faceIcons && Array.isArray(act.faceIcons)) {
-          iconsHtml = `<span class="history-icons">${act.faceIcons.map((k) => iconHTML(k, true)).join("")}</span>`;
+        let chosenRow = "";
+        if (act.chosenIcon) {
+          const isUnusable = act.chosenIcon === "__unusable";
+          const currentLandmark = park() ? park().landmark : "Достопримечательность";
+          const labelMap = {
+            bear: "Медведь",
+            turtle: "Черепаха",
+            fish: "Рыба",
+            bird: "Птица",
+            sun: "Солнце (+1 ☀)",
+            water: "Вода",
+            canteen: "Вода",
+            pencil: "Карандаш",
+            binoculars: "Бинокль",
+            flower: "Цветок",
+            forest: "Дерево",
+            mountain: "Гора",
+            arrowhead: currentLandmark,
+            park: currentLandmark,
+            __unusable: "Солнце (+1 ☀, замена)"
+          };
+          const label = act.chosenLabel || labelMap[act.chosenIcon] || act.chosenIcon;
+          chosenRow = `<div class="history-chosen-row"><span class="chosen-tag">${isUnusable ? "Замена на солнце:" : "Выбрано:"}</span> <strong>${esc(label)}</strong></div>`;
         }
 
         return `<div class="history-item">
         <div class="history-item-header">
-          <span class="${badgeCls}">${icon}</span>
+          <span class="${badgeCls}">${badgeText}</span>
           <strong class="history-player">${esc(playerName)}</strong>
           <span class="history-time">${time}</span>
         </div>
         <div class="history-item-body">
-          <div class="history-face">${esc(faceLabel)} ${iconsHtml}</div>
+          <div class="history-face">${esc(faceLabel)}</div>
+          ${chosenRow}
           <div class="history-desc">${esc(summaryText)}</div>
         </div>
       </div>`;
@@ -389,7 +410,7 @@
   const iconHTML = (key, small = false) => {
     if (key === "sun")
       return '<span class="sun-emoji" aria-label="солнце">☀</span>';
-    if (key === "park") {
+    if (key === "park" || key === "arrowhead") {
       const p = park();
       const lSrc = p && p.landmarkIcon && D.assets[p.landmarkIcon];
       if (lSrc) {
@@ -401,6 +422,25 @@
     const src = D.assets[key] || D.assets[keyIcon[key]];
     if (!src) return `<span class="site-text">${esc(key)}</span>`;
     return `<img ${small ? 'class="small-symbol"' : ""} class="icons" src="${src}" alt="${esc(key)}">`;
+  };
+  const getFaceLabel = (face) => {
+    if (!face) return "";
+    const p = park();
+    const lName = p ? p.landmark : "Ориентир";
+    if (
+      face.icons.length === 1 &&
+      (face.icons[0] === "arrowhead" || face.icons[0] === "park")
+    ) {
+      return lName;
+    }
+    if (
+      face.icons.length === 2 &&
+      (face.icons.includes("arrowhead") || face.icons.includes("park")) &&
+      face.icons.includes("sun")
+    ) {
+      return `${lName} + солнце`;
+    }
+    return face.label;
   };
   const showToast = (text) => {
     const t = $("toast");
@@ -530,7 +570,12 @@
     renderParkSummary($("parkRuleSummary"), p);
     renderParkSummary($("nightParkSummary"), p);
     $("nightParkTitle").textContent = p.name;
-    $("nightParkImage").src = p.back;
+    $("nightParkImage").src = src;
+    $("nightParkImage").alt = `${p.name} — ${game.parkSide === "front" ? "лицевая" : "оборотная"} сторона`;
+    const nightFlip = $("nightFlipParkBtn");
+    if (nightFlip) {
+      nightFlip.textContent = game.parkSide === "front" ? "Перевернуть на оборот ↻" : "Перевернуть на лицевую ↻";
+    }
   };
   const playerAvatar = (name) =>
     Array.from(name.trim())[0]?.toUpperCase() || "✦";
@@ -708,15 +753,16 @@
               canteen: "Вода",
               pencil: "Карандаш",
               binoculars: "Бинокль",
-              flower: "Луг",
-              forest: "Лес",
+              flower: "Цветок",
+              forest: "Дерево",
               mountain: "Гора",
-              park: "Парк",
+              arrowhead: park().landmark,
+              park: park().landmark,
             };
             const labelText = iconNameMap[effectiveIcon] || effectiveIcon;
             faceHtml = `<div class="die-face die-face-used">${iconHTML(effectiveIcon)}</div><div class="die-caption">${esc(labelText)}</div>`;
           } else {
-            faceHtml = `<div class="die-face ${used ? "die-face-used" : ""}">${face.icons.map((k, i) => `${i && face.slash ? '<span class="slash">/</span>' : ""}${iconHTML(k, face.icons.length > 1)}`).join("")}</div><div class="die-caption">${esc(face.label)}</div>`;
+            faceHtml = `<div class="die-face ${used ? "die-face-used" : ""}">${face.icons.map((k, i) => `${i && face.slash ? '<span class="slash">/</span>' : ""}${iconHTML(k, face.icons.length > 1)}`).join("")}</div><div class="die-caption">${esc(getFaceLabel(face))}</div>`;
           }
         } else {
           faceHtml = `<div class="die-face">${d.lead ? "🟠" : "⬜"}</div><div class="die-caption">${used ? "Кубик взят" : "—"}</div>`;
@@ -725,7 +771,7 @@
         const title =
           d.id === 5
             ? `Кубик ведущего · цена ${cost} ☀`
-            : `Кубик похода ${d.id}`;
+            : `Кубик похода ${d.id}${face ? " · " + getFaceLabel(face) : ""}`;
         return `<button class="die ${d.lead ? "lead-die" : ""} ${used ? "die-used" : ""}" data-die="${d.id}" ${used ? "disabled" : ""} title="${title}"><span class="die-number">${d.lead ? "ВЕДУЩИЙ" : `КУБИК ${d.id}`}</span>${faceHtml}${used ? '<span class="die-taken">ВЗЯТ</span>' : ""}</button>`;
       })
       .join("");
@@ -751,10 +797,17 @@
   const renderNight = () => {
     if (!game) return;
     goScreen("night");
+    const p = park();
+    const src = game.parkSide === "front" ? p.front : p.back;
     $("nightRound").textContent = game.round;
-    $("nightParkTitle").textContent = park().name;
-    $("nightParkImage").src = park().back;
-    renderParkSummary($("nightParkSummary"), park());
+    $("nightParkTitle").textContent = p.name;
+    $("nightParkImage").src = src;
+    $("nightParkImage").alt = `${p.name} — ${game.parkSide === "front" ? "лицевая" : "оборотная"} сторона`;
+    const flipBtn = $("nightFlipParkBtn");
+    if (flipBtn) {
+      flipBtn.textContent = game.parkSide === "front" ? "Перевернуть на оборот ↻" : "Перевернуть на лицевую ↻";
+    }
+    renderParkSummary($("nightParkSummary"), p);
     $("nightUndoControl").innerHTML = canUndoDie()
       ? '<button class="btn btn-ghost btn-small" data-undo-last-die>↶ Отменить кубик и вернуть ход</button>'
       : "";
@@ -925,9 +978,10 @@
           canteen: "вода в флягу",
           pencil: "карандаш",
           binoculars: "бинокль",
-          park: "уникальный знак парка",
-          flower: "луг",
-          forest: "лес",
+          park: "достопримечательность",
+          arrowhead: "наконечник стрелы",
+          flower: "цветок",
+          forest: "дерево",
           mountain: "гора",
           bear: "медведь",
           turtle: "черепаха",
@@ -1085,9 +1139,7 @@
       `<span class="eyebrow">Карта парка</span><h2 id="modalTitle">${esc(p.name)}</h2><img class="modal-park-image" src="${src}" alt="${esc(p.name)}"><button class="btn btn-secondary btn-wide" id="modalFlipPark">Перевернуть карту ↻</button><div class="park-rule-summary">${$("parkRuleSummary").innerHTML}</div>`,
     );
     $("modalFlipPark").onclick = () => {
-      game.parkSide = game.parkSide === "front" ? "back" : "front";
-      G.saveSafe(game);
-      renderParkCard();
+      flipCurrentPark();
       openParkModal();
     };
   };
@@ -1137,12 +1189,13 @@
       binoculars:
         "Заполни любой открытый кружок Бинокля. Когда пара кружков закрыта, отметь этот эффект в блокноте.",
       park: `Уникальный значок ${park().landmark}: нарисуй его на следующем развороте или заполни его ночной бонус.`,
+      arrowhead: `Наконечник стрелы (достопримечательность): зарисуй уникальную достопримечательность парка («${park().landmark}») на следующем развороте или заполни её ночной бонус.`,
       forest:
-        "Значок Леса: нарисуй Лес на следующем развороте или заполни соответствующий ночной бонус.",
+        "Значок Дерева (лес): нарисуй Дерево на следующем развороте или заполни соответствующий ночной бонус.",
       mountain:
         "Значок Горы: нарисуй Гору на следующем развороте или заполни соответствующий ночной бонус.",
       flower:
-        "Значок Луга: нарисуй Луг на следующем развороте или заполни соответствующий ночной бонус.",
+        "Значок Цветка (луг): нарисуй Цветок на следующем развороте или заполни соответствующий ночной бонус.",
       bear: "Зачеркни следующую открытую клетку Медведя слева направо и сразу получи её бонус.",
       turtle:
         "Зачеркни следующую открытую клетку Черепахи слева направо и сразу получи её бонус.",
@@ -1154,7 +1207,7 @@
     icons
       .map(
         (key, i) =>
-          `<div class="dice-modal-details"><strong>${esc({ sun: "Солнце", water: "Вода", canteen: "Вода", pencil: "Карандаш", binoculars: "Бинокль", park: `Достопримечательность (${park().landmark})`, flower: "Луг", forest: "Лес", mountain: "Гора", bear: "Медведь", turtle: "Черепаха", fish: "Рыба", bird: "Птица" }[key] || key)}</strong>${esc(symbolDescription(key))}</div>`,
+          `<div class="dice-modal-details"><strong>${esc({ sun: "Солнце", water: "Вода", canteen: "Вода", pencil: "Карандаш", binoculars: "Бинокль", park: `Достопримечательность (${park().landmark})`, arrowhead: `Наконечник стрелы (${park().landmark})`, flower: "Цветок", forest: "Дерево", mountain: "Гора", bear: "Медведь", turtle: "Черепаха", fish: "Рыба", bird: "Птица" }[key] || key)}</strong>${esc(symbolDescription(key))}</div>`,
       )
       .join("");
   const openDieModal = (id, face) => {
@@ -1179,7 +1232,7 @@
       ? `<div class="choice-row">${face.icons.map((icon) => `<button class="choice-button" data-face-choice="${icon}">${iconHTML(icon)}<span>${esc({ bear: "Медведь", turtle: "Черепаха", fish: "Рыба", bird: "Птица" }[icon] || icon)}</span></button>`).join("")}</div><div class="dice-modal-details"><strong>Выбранный символ</strong><span id="choiceDescription">Нажми на символ, чтобы посмотреть его действие.</span></div>`
       : "";
     showModal(
-      `<span class="eyebrow">${lead ? "Кубик ведущего" : `Кубик похода ${id}`} · ${face.label}</span><h2 id="modalTitle">Свойство и действия</h2>${faceHTML}<p>${esc(instructions)}</p>${leadText}${describeFace(face.icons)}${choiceUI}<div class="modal-actions"><button class="btn btn-primary" data-face-take ${face.slash ? "disabled" : ""}>Взять кубик</button><button class="btn btn-ghost" data-close-modal>Отмена</button></div>`,
+      `<span class="eyebrow">${lead ? "Кубик ведущего" : `Кубик похода ${id}`} · ${getFaceLabel(face)}</span><h2 id="modalTitle">Свойство и действия</h2>${faceHTML}<p>${esc(instructions)}</p>${leadText}${describeFace(face.icons)}${choiceUI}<div class="modal-actions"><button class="btn btn-primary" data-face-take ${face.slash ? "disabled" : ""}>Взять кубик</button><button class="btn btn-ghost" data-close-modal>Отмена</button></div>`,
     );
   };
   const openRules = () =>
@@ -1259,13 +1312,18 @@
       setStartButton();
     } else exitToHome();
   });
-  $("helpButton").addEventListener("click", openRules);
-  $("parkFlipButton").addEventListener("click", openParkModal);
-  $("parkFlipText").addEventListener("click", () => {
+  const flipCurrentPark = () => {
+    if (!game) return;
     game.parkSide = game.parkSide === "front" ? "back" : "front";
     G.saveSafe(game);
     renderParkCard();
-  });
+    if (game.phase === "night") renderNight();
+  };
+  $("helpButton").addEventListener("click", openRules);
+  $("parkFlipButton").addEventListener("click", openParkModal);
+  $("parkFlipText").addEventListener("click", flipCurrentPark);
+  if ($("nightFlipParkBtn")) $("nightFlipParkBtn").addEventListener("click", flipCurrentPark);
+  if ($("parkDetailImage")) $("parkDetailImage").addEventListener("click", openParkModal);
   $("parkTitle").addEventListener("click", openParkModal);
   $("dicePool").addEventListener("click", (e) => {
     const b = e.target.closest("[data-die]");
