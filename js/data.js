@@ -122,11 +122,11 @@ window.PRH_DATA = (() => {
   };
   const die = (icons, label, slash = false) => ({ icons, label, slash });
   const dice = [
-    { id: 1, faces: [die(['park'], 'Уникальная достопримечательность'), die(['flower'], 'Луг'), die(['water'], 'Вода'), die(['mountain', 'sun'], 'Гора + солнце'), die(['forest', 'sun'], 'Лес + солнце'), die(['bear', 'turtle'], 'Медведь / черепаха', true)] },
-    { id: 2, faces: [die(['forest'], 'Лес'), die(['mountain'], 'Гора'), die(['bear'], 'Медведь'), die(['pencil'], 'Карандаш'), die(['flower', 'sun'], 'Луг + солнце'), die(['water', 'sun'], 'Вода + солнце')] },
-    { id: 3, faces: [die(['binoculars'], 'Бинокль'), die(['fish'], 'Рыба'), die(['water', 'water'], 'Две воды'), die(['pencil'], 'Карандаш'), die(['sun', 'pencil'], 'Солнце + карандаш'), die(['sun', 'water'], 'Солнце + вода')] },
-    { id: 4, faces: [die(['turtle'], 'Черепаха'), die(['sun', 'sun'], 'Два солнца'), die(['fish', 'bird'], 'Рыба / птица', true), die(['sun', 'pencil'], 'Солнце + карандаш'), die(['water'], 'Вода'), die(['sun', 'water'], 'Солнце + вода')] },
-    { id: 5, lead: true, faces: [die(['pencil'], 'Карандаш'), die(['binoculars'], 'Бинокль'), die(['water'], 'Вода'), die(['pencil'], 'Карандаш'), die(['binoculars'], 'Бинокль'), die(['water'], 'Вода')] }
+    { id: 1, faces: [die(['bird'], 'Птица'), die(['flower'], 'Цветок'), die(['arrowhead'], 'Наконечник стрелы'), die(['mountain', 'sun'], 'Гора + солнце'), die(['forest', 'sun'], 'Дерево + солнце'), die(['bear', 'turtle'], 'Медведь / черепаха', true)] },
+    { id: 2, faces: [die(['forest'], 'Дерево'), die(['mountain'], 'Гора'), die(['bear'], 'Медведь'), die(['pencil'], 'Карандаш'), die(['flower', 'sun'], 'Цветок + солнце'), die(['arrowhead', 'sun'], 'Наконечник стрелы + солнце')] },
+    { id: 3, faces: [die(['binoculars'], 'Бинокль'), die(['fish'], 'Рыба'), die(['water', 'water'], '2 воды'), die(['pencil'], 'Карандаш'), die(['sun', 'pencil'], 'Солнце + карандаш'), die(['sun', 'water'], 'Солнце + вода')] },
+    { id: 4, faces: [die(['turtle'], 'Черепаха'), die(['sun', 'sun'], '2 солнца'), die(['fish', 'bird'], 'Рыба / птица', true), die(['sun', 'pencil'], 'Солнце + карандаш'), die(['arrowhead'], 'Наконечник стрелы'), die(['sun', 'water'], 'Солнце + вода')] },
+    { id: 5, lead: true, faces: [die(['pencil'], 'Карандаш'), die(['pencil'], 'Карандаш'), die(['binoculars'], 'Бинокль'), die(['binoculars'], 'Бинокль'), die(['water'], 'Вода'), die(['water'], 'Вода')] }
   ];
   const tokens = [
     { id: 'forest', title: 'Лес', icon: 'forest', instruction: 'Отметь значок Леса в блокноте: нарисуй его на следующем развороте или заполни ночной бонус Леса. Затем все игроки могут бесплатно добавить одну линию на доступной странице Леса.' },
