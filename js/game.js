@@ -134,23 +134,58 @@ window.PRH_GAME = (() => {
     const face = faceOf(found), before = JSON.parse(JSON.stringify(g));
     delete before.undoStack;
     delete before.lastDieAction;
+    const getParkOf = (gameObj) => D.parks.find(p => p.id === gameObj.parkId) || D.parks[0];
+    const formatFaceLabel = (f, gameObj) => {
+      if (!f) return '';
+      const p = getParkOf(gameObj);
+      const landmark = p ? p.landmark : 'Ориентир';
+      if (f.icons.length === 1 && (f.icons[0] === 'arrowhead' || f.icons[0] === 'park')) {
+        return landmark;
+      }
+      if (f.icons.length === 2 && (f.icons.includes('arrowhead') || f.icons.includes('park')) && f.icons.includes('sun')) {
+        return `${landmark} + солнце`;
+      }
+      return f.label;
+    };
+    const p = getParkOf(g);
+    const landmarkName = p ? p.landmark : 'Ориентир';
+    const iconNameMap = {
+      bear: 'Медведь',
+      turtle: 'Черепаха',
+      fish: 'Рыба',
+      bird: 'Птица',
+      sun: 'Солнце (+1 ☀)',
+      water: 'Вода',
+      pencil: 'Карандаш',
+      binoculars: 'Бинокль',
+      flower: 'Цветок',
+      forest: 'Дерево',
+      mountain: 'Гора',
+      arrowhead: landmarkName,
+      park: landmarkName,
+      __unusable: 'Солнце (+1 ☀, замена)'
+    };
+    const currentFaceLabel = formatFaceLabel(face, g);
     if (id !== 5) {
       const selected = chosenIcon === '__unusable' ? ['sun'] : (chosenIcon ? [chosenIcon] : face.icons);
       const applied = applyIcons(g, selected, true);
       g.dicePool = g.dicePool.filter(d => d.id !== id);
       const who = currentPlayer(g).name; g.active = nextPlayer(g); g.turnNumber++;
       const earned = []; if (applied.water) earned.push(`+${applied.water} воды`);
-      const dieSummary = `${who} взял кубик ${id}: ${face.label}${earned.length ? ` (${earned.join(', ')})` : ''}`;
-      g.lastMessage = `${who} взял кубик ${id}${earned.length ? ` · ${earned.join(', ')}` : ''}. Передайте ход ${currentPlayer(g).name}.`;
+      const chosenLabel = chosenIcon ? (iconNameMap[chosenIcon] || chosenIcon) : null;
+      const choiceNote = chosenLabel ? ` · Выбрано: ${chosenLabel}` : '';
+      const dieSummary = `${who} взял кубик ${id}: ${currentFaceLabel}${choiceNote}${earned.length ? ` (${earned.join(', ')})` : ''}`;
+      g.lastMessage = `${who} взял кубик ${id}${choiceNote}${earned.length ? ` · ${earned.join(', ')}` : ''}. Передайте ход ${currentPlayer(g).name}.`;
       g.actionHistory = [{
         turn: g.turnNumber,
         round: g.round,
         who,
         playerName: who,
         dieId: id,
-        faceLabel: face.label,
+        faceLabel: currentFaceLabel,
         faceIcons: face.icons,
         chosenIcon,
+        chosenLabel,
         text: dieSummary,
         summary: dieSummary,
         detail: g.lastMessage,
